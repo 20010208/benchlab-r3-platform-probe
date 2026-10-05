@@ -1,0 +1,90 @@
+# PLATFORM PROBE ONLY (synthetic; no candidate, no live data feeds beyond the three public GET reachability checks, no secrets).
+name: probe-env
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '3,18,33,48 * * * *'      # short-lived observation of schedule delays / workflow_sha semantics; disabled after the observation window
+permissions: {}
+jobs:
+  facts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    env:
+      GH_WORKFLOW_SHA: ${{ github.workflow_sha }}
+      GH_SHA: ${{ github.sha }}
+      GH_REF: ${{ github.ref }}
+      GH_WORKFLOW_REF: ${{ github.workflow_ref }}
+      GH_EVENT: ${{ github.event_name }}
+      GH_RUN_ID: ${{ github.run_id }}
+      GH_RUN_ATTEMPT: ${{ github.run_attempt }}
+      GH_JOB_WORKFLOW_SHA: ${{ github.job_workflow_sha }}
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      UPSTREAM_PIN: 600bdcd536d04521dbd300822e7b2af886c9821a
+    steps:
+      - name: T1 runner facts
+        run: |
+          echo "PROBE> event=$GH_EVENT run_id=$GH_RUN_ID attempt=$GH_RUN_ATTEMPT"
+          echo "PROBE> nproc=$(nproc) mem_mb=$(free -m | awk '/Mem:/{print $2}') disk=$(df -h / | awk 'NR==2{print $2" avail "$4}') arch=$(uname -m) kernel=$(uname -r)"
+          echo "PROBE> image=$ImageOS $ImageVersion runner=$RUNNER_NAME os=$RUNNER_OS"
+          echo "PROBE> python3=$(python3 --version 2>&1) git=$(git --version)"
+          echo "PROBE> start_utc=$(date -u +%FT%TZ)"
+      - name: T9 workflow identity observation
+        run: |
+          echo "PROBE> workflow_sha=$GH_WORKFLOW_SHA sha=$GH_SHA GITHUB_SHA=$GITHUB_SHA ref=$GH_REF workflow_ref=$GH_WORKFLOW_REF job_workflow_sha=$GH_JOB_WORKFLOW_SHA"
+          git init -q idprobe; cd idprobe
+          for c in "$GH_WORKFLOW_SHA" "$GH_SHA"; do
+            if [ -n "$c" ]; then
+              git fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$c" && echo "PROBE> fetched $c: probe-env.yml blob=$(git rev-parse FETCH_HEAD:.github/workflows/probe-env.yml) shadow.yml blob=$(git rev-parse FETCH_HEAD:.github/workflows/shadow.yml)"
+            fi
+          done
+          echo "PROBE> default-branch tip now: $(git ls-remote "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" refs/heads/main | cut -f1)"
+      - name: T10 clock and T11 reachability (GET only, no content stored)
+        run: |
+          echo "PROBE> clock_local=$(date -u +%s.%N) github_date_header=$(curl -sI --max-time 10 https://github.com | awk -F': ' 'tolower($1)=="date"{print $2}' | tr -d '\r')"
+          for u in https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json https://services.swpc.noaa.gov/json/ace/swepam/ace_swepam_1h.json "https://cdaweb.gsfc.nasa.gov/hapi/data?id=AC_K0_SWE&parameters=Vp&format=json&time.min=2026-09-01T00:00:00Z&time.max=2026-09-01T01:00:00Z"; do
+            host=$(echo "$u" | awk -F/ '{print $3}')
+            curl -s -o /dev/null --max-time 20 --retry 0 -w "PROBE> GET $host status=%{http_code} bytes=%{size_download} time_total=%{time_total} remote_ip_class=%{remote_ip}\n" "$u" || echo "PROBE> GET $host FAILED rc=$?"
+            echo "PROBE> $host date_header=$(curl -sI --max-time 15 "$u" | awk -F': ' 'tolower($1)=="date"{print $2}' | tr -d '\r') local=$(date -u +%FT%TZ)"
+          done
+      - name: T13 fetch by exact SHA (non-tip commit; pinned upstream commit, read-only)
+        run: |
+          git init -q fetchprobe; cd fetchprobe
+          git fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN" && echo "PROBE> fetch-by-SHA ops commit: OK $(git rev-parse FETCH_HEAD)" || echo "PROBE> fetch-by-SHA ops commit: FAILED"
+          git fetch -q --no-tags https://github.com/Trillium-Technologies/benchlab-starter-kit "$UPSTREAM_PIN" && echo "PROBE> fetch-by-SHA upstream pinned commit: OK $(git rev-parse FETCH_HEAD)" || echo "PROBE> fetch-by-SHA upstream: FAILED"
+          echo "PROBE> end_utc=$(date -u +%FT%TZ)"
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions: {}
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+      CANDIDATE_SOURCE_URL: ${{ vars.CANDIDATE_SOURCE_URL }}
+    steps:
+      - name: T2 container setup (apt, ops commit by SHA, hash-locked numpy)
+        run: |
+          set -euo pipefail
+          echo "PROBE> whoami=$(id -un) uid=$(id -u) os=$(. /etc/os-release; echo $PRETTY_NAME) start_utc=$(date -u +%FT%TZ)"
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops
+          git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"
+          git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          test "$(git -C ops rev-parse HEAD)" = "$OPS_COMMIT_PIN"
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+          echo "PROBE> python=$(python3 --version 2>&1) pip=$(python3 -m pip --version | cut -d' ' -f1-2) git=$(git --version)"
+          python3 -c "import numpy, sys, platform; print('PROBE> numpy', numpy.__version__, 'python', sys.version.split()[0], platform.machine())"
+          python3 -m pip list 2>/dev/null | awk 'NR>2{print "PROBE> pip-list " $1 "==" $2}' | head -20
+          echo "PROBE> hash-lock negative control (must FAIL): $(python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps --dry-run --ignore-installed 'numpy==2.2.6' 2>&1 | tail -1)"
+          echo "PROBE> line-endings: shadow_ops_r3.py CR count=$(tr -cd '\r' < ops/shadow_ops_r3.py | wc -c) autocrlf=$(git -C ops config core.autocrlf)"
+      - name: Ops identity gate on the real runtime (check-ops with the real pins, runtime enforced)
+        run: python3 -B ops/shadow_ops_r3.py check-ops
+      - name: Step-scope observation (no token was given to this step)
+        run: |
+          echo "PROBE> GITHUB_TOKEN present in this step: $([ -n "${GITHUB_TOKEN:-}" ] && echo YES || echo NO)"
+          echo "PROBE> end_utc=$(date -u +%FT%TZ)"

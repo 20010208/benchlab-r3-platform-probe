@@ -1,0 +1,158 @@
+# PLATFORM PROBE ONLY (synthetic ledger and synthetic candidate stand-in; the AUDITED R3 module is imported from the pinned ops commit).
+name: probe-lab
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: scenario
+        required: true
+        type: choice
+        options: [init, single, flow, halt-all, halt-nowrite, perms, cas-race, cas-verify]
+permissions: {}
+concurrency:
+  group: probe-lab
+  cancel-in-progress: false
+jobs:
+  lab:
+    if: ${{ inputs.scenario != 'cas-race' && inputs.scenario != 'halt-nowrite' && inputs.scenario != 'cas-verify' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: write
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      SCENARIO: ${{ inputs.scenario }}
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+    steps:
+      - name: Setup
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops; git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"; git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          test "$(git -C ops rev-parse HEAD)" = "$OPS_COMMIT_PIN"
+          git init -q src; git -C src -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_SHA"; git -C src -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Scenario
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA_EVIDENCE: ${{ github.workflow_sha }}
+        run: python3 -B src/probe/lab.py "$SCENARIO"
+  nowrite:
+    if: ${{ inputs.scenario == 'halt-nowrite' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: read
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+    steps:
+      - name: Setup
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops; git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"; git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          git init -q src; git -C src -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_SHA"; git -C src -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Wake with a READ-ONLY token on a corrupted synthetic ledger
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B src/probe/lab.py halt-nowrite
+  cas-prepare:
+    if: ${{ inputs.scenario == 'cas-race' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: write
+    outputs:
+      barrier: ${{ steps.b.outputs.barrier }}
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+    steps:
+      - name: Setup
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops; git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"; git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          git init -q src; git -C src -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_SHA"; git -C src -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Fresh synthetic ledger
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B src/probe/lab.py init
+      - id: b
+        name: Barrier 240 s ahead (all claimers must be up before it)
+        run: echo "barrier=$(( $(date +%s) + 240 ))" >> "$GITHUB_OUTPUT"
+  cas-claim:
+    needs: cas-prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      BARRIER: ${{ needs.cas-prepare.outputs.barrier }}
+      CLAIMER: ${{ matrix.n }}
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+    steps:
+      - name: Setup
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops; git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"; git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          git init -q src; git -C src -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_SHA"; git -C src -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Claim (identical identity, shared barrier)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B src/probe/lab.py cas-claim
+  cas-verify:
+    needs: cas-claim
+    if: ${{ always() && inputs.scenario == 'cas-race' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: read
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+    steps:
+      - name: Setup
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+          git init -q ops; git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"; git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          git init -q src; git -C src -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_SHA"; git -C src -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Verify the contested ledger
+        run: python3 -B src/probe/lab.py cas-verify
