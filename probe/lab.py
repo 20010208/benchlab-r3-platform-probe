@@ -193,5 +193,30 @@ def sc_fixups():
     g.run(w, "push", "origin", "--delete", "probe-plain-push2", check=False, remote=REMOTE)
 
 
+def attempt(label, st, *args, remote=REMOTE):
+    r = st.g.run(st.path, *args, check=False, remote=remote); out("rule-attempt", label=label, rc=r.returncode, cls=("OK" if r.returncode == 0 else R.classify_push_error(r.stderr)), stderr=san(r.stderr)[:420])
+    return r
+
+
+def sc_rules_token():
+    out("rules-pre", view=view())
+    r = run_wake("append under rules (FF push + atomic anchor tag creation)", "2030-06-01T00:07:00Z")
+    st = store(); st.refresh(); st.g.run(st.path, "reset", "-q", "--hard", "HEAD~1"); open(os.path.join(st.path, "x.txt"), "w").write("x"); st.g.run(st.path, "add", "-A"); st.g.run(st.path, "commit", "-q", "-m", "rewrite")
+    attempt("FORCE-PUSH rewritten ledger branch (job token)", st, "push", "--force", "origin", f"HEAD:refs/heads/{R.BRANCH}")
+    attempt("DELETE ledger branch (job token)", st, "push", "origin", "--delete", f"refs/heads/{R.BRANCH}")
+    s2 = store(); s2.refresh(); tags = sorted(s2.anchors())
+    attempt("MOVE existing anchor tag with --force (job token)", s2, "push", "--force", "origin", f"HEAD~1:refs/tags/{R.ANCHOR}000000")
+    attempt("DELETE existing anchor tag (job token)", s2, "push", "origin", "--delete", f"refs/tags/{R.ANCHOR}000000")
+    s2.g.run(s2.path, "tag", f"{R.ANCHOR}000099"); attempt("CREATE a new anchor tag (job token)", s2, "push", "origin", f"refs/tags/{R.ANCHOR}000099")
+    attempt("DELETE the tag I just created (job token)", s2, "push", "origin", "--delete", f"refs/tags/{R.ANCHOR}000099")
+    a, b = store(), store(); a.refresh(); b.refresh(); ra = a.ledger_bytes(); rr, _ = R.parse_ledger(ra)
+    idn = dict(candidate_sha=R.CANDIDATE_SHA, ops_commit=PINS["ops_commit"], wrapper_sha256=PINS["wrapper_sha256"], workflow_blob=PINS["workflow_blob"], lock_sha256=PINS["lock_sha256"], workflow_sha=None, journal_head=rr[-1]["journal_head"], ts="2030-06-02T00:07:00Z", run_id="probe-a", run_attempt=1, runtime_identity="probe")
+    tb = b.stage(R.make_record(rr[-1], "STARTED", dict(idn, run_id="probe-b"), origin="2030-06-02T00:00:00Z", attempt_no=1), ra); out("rules-cas-winner", status=b.push(tb))
+    ta = a.stage(R.make_record(rr[-1], "STARTED", idn, origin="2030-06-02T00:00:00Z", attempt_no=1), ra)
+    attempt("LOST-CAS push under rules (stale clone, ordinary fast-forward race)", a, "push", "--atomic", "origin", f"HEAD:refs/heads/{R.BRANCH}", f"refs/tags/{ta}")
+    out("rules-post-attacks", view=view())
+    corrupt_ledger(); r = R.run_once(mkcfg("2030-06-03T00:07:00Z")); out("halt-under-rules", result=r.get("result"), durable=r.get("durable"), ran=r.get("ran"), halt_class=r.get("halt_class"), remote_view=view())
+
+
 if __name__ == "__main__":
-    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups}[sys.argv[1]]()
+    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups, "rules-token": sc_rules_token}[sys.argv[1]]()
