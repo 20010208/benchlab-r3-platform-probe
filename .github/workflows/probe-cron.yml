@@ -1,0 +1,29 @@
+# PLATFORM PROBE ONLY: uses the exact R3 cron string to observe real scheduled firing (delay, dropped wakes, workflow_sha semantics). No secrets, no checkout, no data.
+name: probe-cron
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '7,17,27,37 0,6,12,18 * * *'
+permissions: {}
+defaults:
+  run:
+    shell: bash
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      GH_WORKFLOW_SHA: ${{ github.workflow_sha }}
+      GH_SHA: ${{ github.sha }}
+      GH_REF: ${{ github.ref }}
+      GH_EVENT: ${{ github.event_name }}
+      GH_SCHEDULE: ${{ github.event.schedule }}
+      GH_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Observe
+        run: |
+          NOW=$(date -u +%s); M=$(date -u +%M | sed 's/^0//'); H=$(date -u +%H)
+          NOMINAL=$NOW; for m in 37 27 17 7; do if [ "${M:-0}" -ge $m ]; then NOMINAL=$(( NOW - (${M:-0} - m) * 60 - $(date -u +%S | sed 's/^0//') )); break; fi; done
+          echo "PROBE> event=$GH_EVENT schedule='$GH_SCHEDULE' run_id=$GH_RUN_ID start_utc=$(date -u +%FT%TZ) nominal_utc=$(date -u -d @$NOMINAL +%FT%TZ) approx_delay_s=$(( NOW - NOMINAL ))"
+          echo "PROBE> workflow_sha=$GH_WORKFLOW_SHA sha=$GH_SHA ref=$GH_REF same=$([ "$GH_WORKFLOW_SHA" = "$GH_SHA" ] && echo yes || echo no)"

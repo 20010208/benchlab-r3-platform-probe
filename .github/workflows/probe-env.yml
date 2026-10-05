@@ -41,6 +41,14 @@ jobs:
             fi
           done
           echo "PROBE> default-branch tip now: $(git ls-remote "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" refs/heads/main | cut -f1)"
+      - name: Executed-workflow gate (probe-level; blob of the EXECUTED definition vs an independent pin)
+        env:
+          EXPECTED_BLOB: ${{ vars.PROBE_ENV_BLOB_PIN }}
+        run: |
+          git init -q gate; cd gate
+          git fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GH_WORKFLOW_SHA"
+          EXEC=$(git rev-parse FETCH_HEAD:.github/workflows/probe-env.yml)
+          echo "PROBE> executed_blob=$EXEC expected_blob=$EXPECTED_BLOB gate=$([ "$EXEC" = "$EXPECTED_BLOB" ] && echo MATCH || echo MISMATCH) ref=$GH_REF"
       - name: T10 clock and T11 reachability (GET only, no content stored)
         run: |
           echo "PROBE> clock_local=$(date -u +%s.%N) github_date_header=$(curl -sI --max-time 10 https://github.com | awk -F': ' 'tolower($1)=="date"{print $2}' | tr -d '\r')"

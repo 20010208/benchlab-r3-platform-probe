@@ -1,0 +1,22 @@
+# PLATFORM PROBE ONLY: environment-scoped variable behaviour (deployment branch policy). No secrets.
+name: probe-pins
+on:
+  workflow_dispatch: {}
+permissions: {}
+defaults:
+  run:
+    shell: bash
+jobs:
+  read-env-pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    environment: r3-pins
+    env:
+      ENV_PIN: ${{ vars.ENV_PIN }}
+      REPO_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      GH_REF: ${{ github.ref }}
+      GH_WORKFLOW_SHA: ${{ github.workflow_sha }}
+    steps:
+      - name: Read pins
+        run: echo "PROBE> ref=$GH_REF workflow_sha=$GH_WORKFLOW_SHA env_pin='$ENV_PIN' repo_pin_prefix='${REPO_PIN:0:12}'"
