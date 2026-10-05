@@ -92,6 +92,18 @@ jobs:
           python3 -m pip list 2>/dev/null | awk 'NR>2{print "PROBE> pip-list " $1 "==" $2}' | head -20
           echo "PROBE> hash-lock negative control (must FAIL): $(python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps --dry-run --ignore-installed 'numpy==2.2.6' 2>&1 | tail -1)"
           echo "PROBE> line-endings: shadow_ops_r3.py CR count=$(tr -cd '\r' < ops/shadow_ops_r3.py | wc -c) autocrlf=$(git -C ops config core.autocrlf)"
+      - name: Hash-lock negative controls (each MUST fail) and binary-only / no-deps behaviour
+        run: |
+          GOOD=$(grep -o 'sha256:[0-9a-f]*' ops/requirements.lock | head -1)
+          ZERO=$(printf '0%.0s' $(seq 64))
+          echo "numpy==2.2.6 --hash=sha256:$ZERO" > bad.lock
+          if python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r bad.lock --target /tmp/n1 > /tmp/n1.log 2>&1; then echo "PROBE> NEGCONTROL wrong-hash: UNEXPECTEDLY INSTALLED"; else echo "PROBE> NEGCONTROL wrong-hash: failed as required: $(grep -m1 -iE 'do not match|hash' /tmp/n1.log | cut -c1-110)"; fi
+          printf 'numpy==2.2.6 --hash=%s\nrequests\n' "$GOOD" > loose.lock
+          if python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r loose.lock --target /tmp/n2 > /tmp/n2.log 2>&1; then echo "PROBE> NEGCONTROL unhashed-extra-package: UNEXPECTEDLY INSTALLED"; else echo "PROBE> NEGCONTROL unhashed-extra-package: failed as required: $(grep -m1 -iE 'hashes|pin' /tmp/n2.log | cut -c1-110)"; fi
+          echo "six==1.16.0 --hash=sha256:$ZERO" > other.lock
+          if python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r other.lock --target /tmp/n3 > /tmp/n3.log 2>&1; then echo "PROBE> NEGCONTROL other-package-wrong-hash: UNEXPECTEDLY INSTALLED"; else echo "PROBE> NEGCONTROL other-package-wrong-hash: failed as required"; fi
+          echo "PROBE> positive control: $(python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock --target /tmp/p1 2>&1 | tail -1 | cut -c1-90)"
+          echo "PROBE> dist-info entries installed by the lock: $(ls /tmp/p1 | grep -c dist-info)"
       - name: Ops identity gate on the real runtime (check-ops with the real pins, runtime enforced)
         run: python3 -B ops/shadow_ops_r3.py check-ops
       - name: Step-scope observation (no token was given to this step)
