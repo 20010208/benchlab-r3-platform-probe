@@ -98,3 +98,4 @@ jobs:
         run: |
           echo "PROBE> GITHUB_TOKEN present in this step: $([ -n "${GITHUB_TOKEN:-}" ] && echo YES || echo NO)"
           echo "PROBE> end_utc=$(date -u +%FT%TZ)"
+# unauthorized modification of the executed workflow definition (probe)
