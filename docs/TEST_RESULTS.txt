@@ -1,0 +1,114 @@
+BENCHLAB SHADOW OPS R3 -- TEST RESULTS (raw summaries; nothing edited)
+
+All tests: temporary directories, a hardened LOCAL bare git repository standing in for GitHub, synthetic feeds, the REAL frozen candidate code, real OS processes for the races.
+NO GitHub runtime, NO network to GitHub, NO live data feeds, NO participant-site access, NO production ledger. 'Real freeze verifier' tests run verify_freeze.py on the reconstructed candidate;
+most other integration tests inject a stub for that 6-second verification (stated in the wrapper tests via verify_fn) so that hundreds of wakes stay tractable.
+
+PLATFORM CLASSIFICATION
+  WINDOWS_TESTED          : all five sections below (Windows 11; 3.11.3 numpy 2.4.6 Windows-10-10.0.26200-SP0)
+  LINUX_LOCAL_WSL_TESTED  : sections pure, static, integration, races on Ubuntu 24.04 under WSL2 (Python 3.12.3, numpy 2.2.6, git 2.43). This is a local Linux kernel, NOT a GitHub runner and NOT Python 3.10.
+  LINUX_STATIC_VALIDATED  : Python 3.10 grammar, no Windows-only API, no 3.11+ feature, LF endings (section static)
+  GITHUB_RUNTIME_UNTESTED : container jobs, apt, hash-locked pip on the runner, token pushes, rulesets, schedule delays, endpoint reachability, workflow_sha -> docs/EXTERNAL_TEST_PLAN.md
+
+=== WINDOWS  section pure   started 2026-10-05T06:57:20Z  finished 2026-10-05T06:57:34Z  exit 0
+==== SUMMARY ====
+CAS        checks=   1 pass=   1 cases=19
+NONCE      checks=   2 pass=   2 cases=3001
+ORIGIN     checks=   6 pass=   6 cases=344425
+RETRY      checks=  14 pass=  14 cases=20044
+SCHEMA     checks=  15 pass=  15 cases=782
+TOTAL      checks=38 pass=38 fail=0 cases=368271 elapsed_s=14
+EXTRA {"fuzz": {"cases": 20000, "ok": 20000, "max_started_per_origin": 3, "max_success_per_origin": 1}, "origin_counts": {"explicit": 31, "sweep_instants": 181440, "edge_instants": 480}}
+FAILS []
+
+=== WINDOWS  section integration   started 2026-10-05T06:57:34Z  finished 2026-10-05T07:33:57Z  exit 0
+==== SUMMARY ====
+CANDIDATE  checks=  13 pass=  13 cases=23
+HALT       checks=  14 pass=  14 cases=21
+ISOLATION  checks=  11 pass=  11 cases=23
+LEDGER     checks=  42 pass=  42 cases=42
+MUT        checks=   7 pass=   7 cases=7830
+PINS       checks=  32 pass=  32 cases=36
+SCALE      checks=   4 pass=   4 cases=20402
+TOTAL      checks=123 pass=123 fail=0 cases=28377 elapsed_s=2183
+EXTRA {"candidate_reconstruct_and_real_verify_s": 6.0, "tag_force_update_blocked_by_branch_deny_rules": false, "mutation_naive": [7817, 7817], "mutation_anchor": [6, 6], "mutation_coordinated": {"cases": 6, "detected_in_run": 0, "detected_by_mirror": 6}, "lock_sha256": "6c7c8fb3de751d81a26aa30848665886440e1ff5d3c91ed6fed543a5f68337ec", "parse_20000_records_s": 3.88, "structural_400_commits_s": 8.14}
+FAILS []
+
+=== WINDOWS  section static   started 2026-10-05T07:33:58Z  finished 2026-10-05T07:34:07Z  exit 0
+==== SUMMARY ====
+HYGIENE    checks=   5 pass=   5 cases=35
+LINUX_STATIC checks=  17 pass=  17 cases=28
+NETWORK    checks=   6 pass=   6 cases=18
+WORKFLOW   checks=  12 pass=  12 cases=18
+TOTAL      checks=40 pass=40 fail=0 cases=99 elapsed_s=9
+EXTRA {"candidate_reconstruct_and_real_verify_s": 8.2, "workflow_blob_hash": "374822643cafdd0f8b963bb557ddfdf775ea2479", "container_image_pinned_by_digest": false, "commit_identities": []}
+FAILS []
+
+=== WINDOWS  section races   started 2026-10-05T07:34:07Z  finished 2026-10-05T07:57:25Z  exit 0
+==== SUMMARY ====
+CAS        checks=  37 pass=  37 cases=562
+TOTAL      checks=37 pass=37 fail=0 cases=562 elapsed_s=1398
+EXTRA {"candidate_reconstruct_and_real_verify_s": 7.0, "race_rounds": 37, "race_winners_per_round": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "race_results": {"SKIPPED_IN_FLIGHT": 435, "SUCCESS": 12, "CLAIMED": 19, "SKIPPED_CAP": 30}, "race_processes": 592}
+FAILS []
+
+=== WINDOWS  section stress   started 2026-10-05T07:57:25Z  finished 2026-10-05T08:17:46Z  exit 0
+==== SUMMARY ====
+CAS        checks=  30 pass=  30 cases=480
+TOTAL      checks=30 pass=30 fail=0 cases=480 elapsed_s=1220
+EXTRA {"candidate_reconstruct_and_real_verify_s": 6.9, "stress_rounds": 30, "stress_winners": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "stress_processes": 480}
+FAILS []
+
+Windows totals: TOTAL      checks=123 pass=123 fail=0 cases=28377 | TOTAL      checks=30 pass=30 fail=0 cases=480 | TOTAL      checks=37 pass=37 fail=0 cases=562 | TOTAL      checks=38 pass=38 fail=0 cases=368271 | TOTAL      checks=40 pass=40 fail=0 cases=99
+
+=== LINUX (WSL2)  section pure   exit 0
+==== SUMMARY ====
+CAS        checks=   1 pass=   1 cases=19
+NONCE      checks=   2 pass=   2 cases=3001
+ORIGIN     checks=   6 pass=   6 cases=344425
+RETRY      checks=  14 pass=  14 cases=20044
+SCHEMA     checks=  15 pass=  15 cases=782
+TOTAL      checks=38 pass=38 fail=0 cases=368271 elapsed_s=7
+EXTRA {"fuzz": {"cases": 20000, "ok": 20000, "max_started_per_origin": 3, "max_success_per_origin": 1}, "origin_counts": {"explicit": 31, "sweep_instants": 181440, "edge_instants": 480}}
+FAILS []
+
+=== LINUX (WSL2)  section static   exit 0
+==== SUMMARY ====
+HYGIENE    checks=   5 pass=   5 cases=35
+LINUX_STATIC checks=  17 pass=  17 cases=28
+NETWORK    checks=   6 pass=   6 cases=18
+WORKFLOW   checks=  12 pass=  12 cases=18
+TOTAL      checks=40 pass=40 fail=0 cases=99 elapsed_s=1
+EXTRA {"candidate_reconstruct_and_real_verify_s": 0.7, "workflow_blob_hash": "374822643cafdd0f8b963bb557ddfdf775ea2479", "container_image_pinned_by_digest": false, "commit_identities": []}
+FAILS []
+
+=== LINUX (WSL2)  section integration   exit 0
+==== SUMMARY ====
+CANDIDATE  checks=  13 pass=  13 cases=23
+HALT       checks=  14 pass=  14 cases=21
+ISOLATION  checks=  11 pass=  11 cases=23
+LEDGER     checks=  42 pass=  42 cases=42
+MUT        checks=   7 pass=   7 cases=7831
+PINS       checks=  32 pass=  32 cases=36
+SCALE      checks=   4 pass=   4 cases=20402
+TOTAL      checks=123 pass=123 fail=0 cases=28378 elapsed_s=188
+EXTRA {"candidate_reconstruct_and_real_verify_s": 0.7, "tag_force_update_blocked_by_branch_deny_rules": false, "mutation_naive": [7818, 7818], "mutation_anchor": [6, 6], "mutation_coordinated": {"cases": 6, "detected_in_run": 0, "detected_by_mirror": 6}, "lock_sha256": "6c7c8fb3de751d81a26aa30848665886440e1ff5d3c91ed6fed543a5f68337ec", "parse_20000_records_s": 2.05, "structural_400_commits_s": 0.35}
+FAILS []
+
+=== LINUX (WSL2)  section races   exit 0
+==== SUMMARY ====
+CAS        checks=  37 pass=  37 cases=562
+TOTAL      checks=37 pass=37 fail=0 cases=562 elapsed_s=449
+EXTRA {"candidate_reconstruct_and_real_verify_s": 1.3, "race_rounds": 37, "race_winners_per_round": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "race_results": {"SKIPPED_IN_FLIGHT": 435, "SUCCESS": 12, "CLAIMED": 19, "SKIPPED_CAP": 30}, "race_processes": 592}
+FAILS []
+
+Linux environment: 3.12.3 2.2.6 | Linux 6.18.33.2-microsoft-standard-WSL2   started 2026-10-05T13:10:49Z finished 2026-10-05T13:21:35Z
+
+DEFECTS FOUND BY THESE TESTS AND FIXED BEFORE THIS RUN (history, for the auditor)
+  1. Double claim: byte-identical concurrent STARTED commits (same run id and time) let a no-op push look like a win -> per-record 128-bit nonce.
+  2. HALT writer crash on a truncated ledger with a stale anchor tag -> an occupied anchor slot is a lost CAS and HALT falls back to HALT.json.
+  3. Hash/URL/name regexes ended in `$`, which accepts a trailing newline -> all anchored with \Z.
+  4. HALT could be defeated by odd reason text (a newline in verifier output made the HALT record schema-invalid and the error was swallowed) -> reasons are sanitised and any chain-record failure falls back to HALT.json.
+  5. Push classification treated every server-side `[remote rejected]` as a rule rejection, so race losers exited instead of re-deciding -> classified by meaning (rule texts vs non-fast-forward / fetch first / slot taken).
+  6. The frozen-journal pairing and history-shape checks were added so that old attempt files and ledger<->journal SUCCESS binding are protected per wake without re-running history.
+
+POST-ASSEMBLY: static/hygiene section re-run after this file was created (so it covers this file): 40/40 checks passed, 0 failures.

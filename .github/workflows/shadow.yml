@@ -1,0 +1,49 @@
+# Benchlab Phase 2D shadow -- R3 (GitHub Actions).  LOCAL CANDIDATE ONLY: not installed, not enabled, never triggered.
+# Zero third-party actions: git, python and pip are used directly.  No secrets.  No pull_request / pull_request_target.
+name: benchlab-shadow
+on:
+  schedule:
+    # UTC wakes 7, 17, 27 and 37 minutes after each six-hourly origin.  The wrapper -- NOT the trigger time -- selects the canonical origin.
+    - cron: '7,17,27,37 0,6,12,18 * * *'
+  workflow_dispatch: {}                       # no inputs (no user-controlled t0); a manual run passes the same origin/window/cap/pin/ledger/HALT gates
+permissions: {}
+concurrency:
+  group: benchlab-shadow
+  cancel-in-progress: false                   # best-effort serialisation only; the ledger CAS is the correctness layer
+defaults:
+  run:
+    shell: bash
+jobs:
+  shadow:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12                       # must stay below the 13-minute crash lease
+    container: public.ecr.aws/ubuntu/ubuntu:22.04
+    permissions:
+      contents: write                         # append to the shadow-ledger branch only; the token is handed to ONE step below
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
+      OPS_WRAPPER_SHA256_PIN: ${{ vars.OPS_WRAPPER_SHA256_PIN }}
+      WORKFLOW_BLOB_PIN: ${{ vars.WORKFLOW_BLOB_PIN }}
+      DEP_LOCK_SHA256_PIN: ${{ vars.DEP_LOCK_SHA256_PIN }}
+      CANDIDATE_SOURCE_URL: ${{ vars.CANDIDATE_SOURCE_URL }}
+    steps:
+      - name: Install base tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates
+      - name: Fetch the pinned ops commit by exact SHA
+        run: |
+          set -euo pipefail
+          git init -q ops
+          git -C ops -c core.autocrlf=false fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$OPS_COMMIT_PIN"
+          git -C ops -c core.autocrlf=false checkout -q --detach FETCH_HEAD
+          test "$(git -C ops rev-parse HEAD)" = "$OPS_COMMIT_PIN"
+      - name: Install hash-locked dependencies
+        run: python3 -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r ops/requirements.lock
+      - name: Shadow wake
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA_EVIDENCE: ${{ github.workflow_sha }}
+        run: python3 -B ops/shadow_ops_r3.py run

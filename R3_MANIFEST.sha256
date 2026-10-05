@@ -1,0 +1,24 @@
+# R3_MANIFEST.sha256 -- SHA-256 of every file of the R3 ops repository except this manifest (sha256sum format: sha256sum -c R3_MANIFEST.sha256).
+# AUDIT AID ONLY: it is NOT the production trust root and is never read by shadow_ops_r3.py. The production gate trusts only the independently stored pins
+# (ops commit, wrapper SHA-256, workflow blob hash, dependency-lock SHA-256) described in docs/PINS.md. A manifest inside the tree it describes cannot protect itself.
+705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da  .gitattributes
+741b507da8c69b0c620b5f0214e7ad9468124c645426052c5dfe39da5d22aad4  .github/workflows/shadow.yml
+852bf894ca662c8bf611d4331d5c3c8fe56d269f124186d44ea0b25ab961b180  .gitignore
+05bf329408e81df2a3bdf716ba0df5725b9bb00c89d97b7cd8949caebed71e32  README.md
+d3c72a7a7f733379cae533927f470e1ade46546afdfba9780c487c2dc6231511  docs/EXTERNAL_TEST_PLAN.md
+30f6235ce52a106d2bf4f4055643b76abdf065c518e93b02e2c5eba05f8368fb  docs/PINS.md
+b95f8aab3cb0f9dab17abee04697a3b54cd2b58b912fff9fed47d19096eb042a  docs/PUBLICATION.md
+d43acb1911ff8124b95b304804ae7d784b5774ea93c8b59fcb3b12ab07bc7e77  docs/TEST_RESULTS.txt
+6c7c8fb3de751d81a26aa30848665886440e1ff5d3c91ed6fed543a5f68337ec  requirements.lock
+2f36684f563a56f0f392751a25a352e96143d97cc6e6845d74b040403a49b133  shadow_ops_r3.py
+ca2fd0731bedeec940d5e58271b4bd5a2abd16fae370018153636665707367f0  tests/harness.py
+0f822c1f1ea22f6ad17de7565a513eb9bc745c7343ce75d89bd07b13460b1b96  tests/run_all.py
+9f1eb7981c208b357e2f46c837e8c42f998e340ba0550b0843a235ce460e901e  tests/stub_runner.py
+359ea3990a1cacc9f73e082db63268021bd4a6bb64c04174485718666ab08953  tests/test_integration.py
+5a6265be26f21b4e585719b1c4c50f9672a46a1558d3b9eeed48f93e97962d02  tests/test_pure.py
+0a169f28e2f32146c8f6932054daa91eea32d4ef66f8463181ac1468b857f6d3  tests/test_races.py
+84fe7922764bec6563048ccf180accaff67b4149c5c8bf9234be769bf6868b5c  tests/test_static.py
+3357d384f083aa7437bcdeeaea79adce56f7401cfe3cf93813b38f3a022bcbfd  tests/test_stress.py
+2440bcc4376dbd8fd366f1dc39361f23f8d49b5a4b0662e712802bcc0f435e83  tests/tlib.py
+f255fb4fe413341a96c473b52d07b385d3ce6f9e22b1aa6d1191d68789c6d29f  tests/worker.py
+de7c1d2ad342ec7ee65eca6ae3ce53033914a4cabc523dca11792e417a48b919  tools/make_candidate_bundle.py

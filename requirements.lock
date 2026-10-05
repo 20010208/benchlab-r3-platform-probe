@@ -1,0 +1,5 @@
+# Hash-locked dependency for the R3 shadow runner.
+# Install:  pip install --require-hashes --only-binary=:all: --no-deps -r requirements.lock
+# Target: CPython 3.10, linux/x86_64 (manylinux wheel).  numpy 2.2.6 lies inside the frozen candidate's declared range (numpy>=1.26,<2.3).  numpy 2.4.6 must NOT be used.
+# The hash below was verified three ways: a fresh download of the wheel, the digest PyPI publishes for it (pypi.org/pypi/numpy/2.2.6/json), and the pre-R3 value.
+numpy==2.2.6     --hash=sha256:fc7b73d02efb0e18c000e9ad8b83480dfcd5dfd11065997ed4c6747470ae8915
