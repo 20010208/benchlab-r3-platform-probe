@@ -27,3 +27,4 @@ jobs:
           NOMINAL=$NOW; for m in 37 27 17 7; do if [ "${M:-0}" -ge $m ]; then NOMINAL=$(( NOW - (${M:-0} - m) * 60 - $(date -u +%S | sed 's/^0//') )); break; fi; done
           echo "PROBE> event=$GH_EVENT schedule='$GH_SCHEDULE' run_id=$GH_RUN_ID start_utc=$(date -u +%FT%TZ) nominal_utc=$(date -u -d @$NOMINAL +%FT%TZ) approx_delay_s=$(( NOW - NOMINAL ))"
           echo "PROBE> workflow_sha=$GH_WORKFLOW_SHA sha=$GH_SHA ref=$GH_REF same=$([ "$GH_WORKFLOW_SHA" = "$GH_SHA" ] && echo yes || echo no)"
+# change via PR wf-change-1
