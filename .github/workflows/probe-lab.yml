@@ -7,7 +7,7 @@ on:
         description: scenario
         required: true
         type: choice
-        options: [init, single, flow, halt-all, halt-nowrite, perms, cas-race, cas-verify]
+        options: [init, single, flow, halt-all, halt-nowrite, perms, cas-race, cas-verify, fixups]
 permissions: {}
 defaults:
   run:

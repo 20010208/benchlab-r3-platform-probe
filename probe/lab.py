@@ -181,5 +181,17 @@ def sc_perms():
     g.run(w2, "push", "origin", "--delete", "probe-plain-push", "probe-wf-push", check=False, remote=REMOTE)
 
 
+def sc_fixups():
+    reset(); init(); run_wake("seed success", "2030-05-01T00:05:00Z"); s = store(); s.g.run(s.path, "push", "origin", "--delete", f"refs/tags/{R.ANCHOR}000001", check=False, remote=REMOTE)
+    out("tags-after-delete", tags=view().get("tags")); r = R.run_once(mkcfg("2030-05-01T00:07:00Z"))
+    out("halt-case", case="missing anchor tag (deleted remotely)", result=r.get("result"), durable=r.get("durable"), ran=r.get("ran"), halt_class=r.get("halt_class"), reason=san(str(r.get("reason")))[:160], remote_view=view())
+    for name, tok in (("bad-token-push", "ghs_" + "0" * 36), ("empty-token-push", "")):
+        g = R.Git(tok or None, True); w = d("bad"); g.run(w, "init", "-q", "-b", "z"); g.run(w, "remote", "add", "origin", REMOTE); g.run(w, "commit", "-q", "--allow-empty", "-m", "x")
+        r = g.run(w, "push", "origin", "HEAD:refs/heads/probe-badtoken", check=False, remote=REMOTE); out(name, rc=r.returncode, cls=R.classify_push_error(r.stderr), stderr=san(r.stderr)[:300])
+    g = R.Git(TOKEN, True); w = d("plain"); g.run(w, "init", "-q", "-b", "y"); g.run(w, "remote", "add", "origin", REMOTE); open(os.path.join(w, "plain.txt"), "w").write("x"); g.run(w, "add", "-A"); g.run(w, "commit", "-q", "-m", "plain file push")
+    r = g.run(w, "push", "origin", "HEAD:refs/heads/probe-plain-push2", check=False, remote=REMOTE); out("plain-orphan-branch-push", rc=r.returncode, stderr=san(r.stderr)[:300])
+    g.run(w, "push", "origin", "--delete", "probe-plain-push2", check=False, remote=REMOTE)
+
+
 if __name__ == "__main__":
-    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms}[sys.argv[1]]()
+    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups}[sys.argv[1]]()
