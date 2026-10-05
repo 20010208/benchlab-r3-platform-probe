@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '3,18,33,48 * * * *'      # short-lived observation of schedule delays / workflow_sha semantics; disabled after the observation window
 permissions: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   facts:
     runs-on: ubuntu-24.04
@@ -18,7 +21,6 @@ jobs:
       GH_EVENT: ${{ github.event_name }}
       GH_RUN_ID: ${{ github.run_id }}
       GH_RUN_ATTEMPT: ${{ github.run_attempt }}
-      GH_JOB_WORKFLOW_SHA: ${{ github.job_workflow_sha }}
       OPS_COMMIT_PIN: ${{ vars.OPS_COMMIT_PIN }}
       UPSTREAM_PIN: 600bdcd536d04521dbd300822e7b2af886c9821a
     steps:
@@ -31,7 +33,7 @@ jobs:
           echo "PROBE> start_utc=$(date -u +%FT%TZ)"
       - name: T9 workflow identity observation
         run: |
-          echo "PROBE> workflow_sha=$GH_WORKFLOW_SHA sha=$GH_SHA GITHUB_SHA=$GITHUB_SHA ref=$GH_REF workflow_ref=$GH_WORKFLOW_REF job_workflow_sha=$GH_JOB_WORKFLOW_SHA"
+          echo "PROBE> workflow_sha=$GH_WORKFLOW_SHA sha=$GH_SHA GITHUB_SHA=$GITHUB_SHA ref=$GH_REF workflow_ref=$GH_WORKFLOW_REF"
           git init -q idprobe; cd idprobe
           for c in "$GH_WORKFLOW_SHA" "$GH_SHA"; do
             if [ -n "$c" ]; then

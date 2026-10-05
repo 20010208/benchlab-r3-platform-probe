@@ -9,6 +9,9 @@ on:
         type: choice
         options: [init, single, flow, halt-all, halt-nowrite, perms, cas-race, cas-verify]
 permissions: {}
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: probe-lab
   cancel-in-progress: false
