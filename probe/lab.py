@@ -218,5 +218,9 @@ def sc_rules_token():
     corrupt_ledger(); r = R.run_once(mkcfg("2030-06-03T00:07:00Z")); out("halt-under-rules", result=r.get("result"), durable=r.get("durable"), ran=r.get("ran"), halt_class=r.get("halt_class"), remote_view=view())
 
 
+def sc_verify():
+    out("verify", view=view(), refs=refs())
+
+
 if __name__ == "__main__":
-    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups, "rules-token": sc_rules_token}[sys.argv[1]]()
+    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups, "rules-token": sc_rules_token, "verify": sc_verify}[sys.argv[1]]()
