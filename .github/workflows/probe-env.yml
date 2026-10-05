@@ -110,3 +110,16 @@ jobs:
         run: |
           echo "PROBE> GITHUB_TOKEN present in this step: $([ -n "${GITHUB_TOKEN:-}" ] && echo YES || echo NO)"
           echo "PROBE> end_utc=$(date -u +%FT%TZ)"
+  defaultperms:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      TOK: ${{ github.token }}
+    steps:
+      - name: Capabilities of the default empty-permissions token
+        run: |
+          code() { curl -s -o /dev/null -w "%{http_code}" -X "$1" -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" "${@:2}"; }
+          echo "PROBE> default-token read public repo: $(code GET https://api.github.com/repos/$GITHUB_REPOSITORY)"
+          echo "PROBE> default-token create tag ref (write contents): $(code POST https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs -d '{"ref":"refs/tags/probe-default-token","sha":"'$GITHUB_SHA'"}')"
+          echo "PROBE> default-token update variable: $(code PATCH https://api.github.com/repos/$GITHUB_REPOSITORY/actions/variables/OPS_COMMIT_PIN -d '{"name":"OPS_COMMIT_PIN","value":"x"}')"
