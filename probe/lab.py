@@ -222,5 +222,9 @@ def sc_verify():
     out("verify", view=view(), refs=refs())
 
 
+def sc_wake():
+    run_wake("full wake on the existing ledger", "2030-07-01T00:07:00Z"); out("wake-view", view=view())
+
+
 if __name__ == "__main__":
-    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups, "rules-token": sc_rules_token, "verify": sc_verify}[sys.argv[1]]()
+    {"init": sc_init, "cas-claim": sc_cas_claim, "cas-verify": sc_cas_verify, "single": sc_single, "flow": sc_flow, "halt-all": sc_halt_all, "halt-nowrite": sc_halt_nowrite, "perms": sc_perms, "fixups": sc_fixups, "rules-token": sc_rules_token, "verify": sc_verify, "wake": sc_wake}[sys.argv[1]]()
